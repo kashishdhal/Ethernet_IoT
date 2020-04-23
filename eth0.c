@@ -1076,24 +1076,25 @@ void sendSyn(uint8_t packet[])
     ipFrame* ip = (ipFrame*)&ether->data;
     tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
 
-    // MAC address of the my Intel Computer
-    ether->sourceAddress[0] = 0x44;
-    ether->sourceAddress[1] = 0x85;
-    ether->sourceAddress[2] = 0x00;
-    ether->sourceAddress[3] = 0xe9;
-    ether->sourceAddress[4] = 0xb8;
-    ether->sourceAddress[5] = 0x94;
 
-    // MAC address of the Rpi
-    ether->destAddress[0] = 0xdc;
-    ether->destAddress[1] = 0xa6;
-    ether->destAddress[2] = 0x32;
-    ether->destAddress[3] = 0x63;
-    ether->destAddress[4] = 0xbd;
-    ether->destAddress[5] = 0x3d;
+    // MAC address of the red board
+    ether->sourceAddress[0] = 0x02;
+    ether->sourceAddress[1] = 0x03;
+    ether->sourceAddress[2] = 0x04;
+    ether->sourceAddress[3] = 0x05;
+    ether->sourceAddress[4] = 0x06;
+    ether->sourceAddress[5] = 0x07;
+
+    // MAC address of the Linux PC
+    ether->destAddress[0] = 0x1c;
+    ether->destAddress[1] = 0x69;
+    ether->destAddress[2] = 0x7a;
+    ether->destAddress[3] = 0x07;
+    ether->destAddress[4] = 0x94;
+    ether->destAddress[5] = 0xe3;
 
     // Frame Type is IP
-    ether->frameType = 0x0800;
+    ether->frameType = htons(0x0800);
 
     //Version
     ip->revSize = 0x45;
@@ -1102,21 +1103,21 @@ void sendSyn(uint8_t packet[])
     ip->typeOfService = 0x00;
 
     // Total length
-    ip->length = htons(52); //htons(((ip->revSize & 0xF) * 4) + 20 + 4); // 20 bytes header and 4 bytes options
+    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 4); // 20 bytes header and 4 bytes options
 
     // IP address of the source
     ip->sourceIp[0] = 192;
     ip->sourceIp[1] = 168;
     ip->sourceIp[2] = 10;
-    ip->sourceIp[3] = 10;
+    ip->sourceIp[3] = 138;
 
     // IP address of the destination
     ip->destIp[0] = 192;
     ip->destIp[1] = 168;
     ip->destIp[2] = 10;
-    ip->destIp[3] = 6;
+    ip->destIp[3] = 2;
 
-    ip->id = htons(0xae7f); //0x0000;
+    ip->id = 0x0000;
 
     ip->flagsAndOffset = htons(0x4000);
 
@@ -1130,46 +1131,41 @@ void sendSyn(uint8_t packet[])
     etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
     ip->headerChecksum = getEtherChecksum();
 
-    tcp->destPort = tcp->sourcePort;
+    tcp->destPort = htons(1883);
 
-    tcp->sourcePort = htons(23);
+    tcp->sourcePort = htons(6215);
 
     tcp->seqNum = 0x0000;
 
-    tcp->ackNum = 0x00000001;
+    tcp->ackNum = 0x0000;
 
     uint8_t dataOff =  (20+4)/4; // 20 Bytes header + 4 Bytes options
     uint8_t res = 0;
-    uint16_t flags = 0x12; // SYN + ACK
+    uint16_t flags = 0x002; // SYN
     tcp->dataResFlags = htons( dataOff<<12 | (res>>5)<<9 | flags );
 
     tcp->winSize = htons(1280);
 
     tcp->urgPointer = 0;
-
-    tcp->options[0]= 2; //Kind = Maximum Segment Size
-    tcp->options[1]= 4; // Length = 4
-    tcp->options[2]= htons(1460); // Value = 1460 Bytes
     tcp->data=0;
     tcp->check=0;
+    tcp->options[0]= 2; //Kind = Maximum Segment Size
+    tcp->options[1]= 4; // Length = 4
+    tcp->options[2]= htons(1280); // Value = 1460 Bytes
 
+    // calculate Checksum
 
+    uint16_t tcpLength = htons(20 + 4);
+    // 32-bit sum over pseudo-header
+    sum = 0;
+    etherSumWords(ip->sourceIp, 8);
+    uint16_t tmp16 = ip->protocol;
+    sum += (tmp16 & 0xff) << 8;
+    etherSumWords(&tcpLength, 2);
 
+    etherSumWords(tcp, 20+4);
 
-        // calculate Checksum
-
-//        uint16_t tcpLength = htons(20 + 4);
-//        // 32-bit sum over pseudo-header
-//        sum = 0;
-//        etherSumWords(ip->sourceIp, 8);
-//        tmp16 = ip->protocol;
-//        sum += (tmp16 & 0xff) << 8;
-//        etherSumWords(&tcpLength, 2);
-//
-//        etherSumWords(tcp, 20+4);
-//
-//        tcp->check = getEtherChecksum();
-
+    tcp->check = getEtherChecksum();
 
     etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 4);
 
