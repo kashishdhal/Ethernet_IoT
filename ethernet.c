@@ -175,6 +175,7 @@ int main(void)
     setPinValue(GREEN_LED, 0);
     waitMicrosecond(100000);
 
+    sendSyn(data);
 
     // Main Loop
     // RTOS and interrupts would greatly improve this code,

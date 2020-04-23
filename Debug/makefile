@@ -2,9 +2,7 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
-SHELL = cmd.exe
-
-CG_TOOL_ROOT := C:/ti/ccs920/ccs/tools/compiler/ti-cgt-arm_18.12.3.LTS
+CG_TOOL_ROOT := /home/gnclab/ti/ccs1000/ccs/tools/compiler/ti-cgt-arm_20.2.0.LTS
 
 GEN_OPTS__FLAG := 
 GEN_CMDS__FLAG := 
@@ -23,8 +21,8 @@ $(GEN_CMDS__FLAG) \
 
 -include ../makefile.init
 
-RM := DEL /F
-RMDIR := RMDIR /S/Q
+RM := rm -rf
+RMDIR := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
@@ -146,14 +144,14 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 Ethernet_IoT.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: ARM Linker'
-	"C:/ti/ccs920/ccs/tools/compiler/ti-cgt-arm_18.12.3.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"Ethernet_IoT.map" --heap_size=0 --stack_size=8192 -i"C:/ti/ccs920/ccs/tools/compiler/ti-cgt-arm_18.12.3.LTS/lib" -i"C:/ti/ccs920/ccs/tools/compiler/ti-cgt-arm_18.12.3.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="Ethernet_IoT_linkInfo.xml" --rom_model -o "Ethernet_IoT.out" $(ORDERED_OBJS)
+	"/home/gnclab/ti/ccs1000/ccs/tools/compiler/ti-cgt-arm_20.2.0.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"Ethernet_IoT.map" --heap_size=0 --stack_size=8192 -i"/home/gnclab/ti/ccs1000/ccs/tools/compiler/ti-cgt-arm_20.2.0.LTS/lib" -i"/home/gnclab/ti/ccs1000/ccs/tools/compiler/ti-cgt-arm_20.2.0.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="Ethernet_IoT_linkInfo.xml" --rom_model -o "Ethernet_IoT.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 Ethernet_IoT.hex: $(EXE_OUTPUTS)
 	@echo 'Building files: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo 'Invoking: ARM Hex Utility'
-	"C:/ti/ccs920/ccs/tools/compiler/ti-cgt-arm_18.12.3.LTS/bin/armhex"  -o "Ethernet_IoT.hex" $(EXE_OUTPUTS__QUOTED)
+	"/home/gnclab/ti/ccs1000/ccs/tools/compiler/ti-cgt-arm_20.2.0.LTS/bin/armhex"  -o "Ethernet_IoT.hex" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $(strip $(EXE_OUTPUTS__QUOTED))'
 	@echo ' '
 
