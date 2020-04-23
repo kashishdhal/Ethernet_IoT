@@ -159,7 +159,7 @@ int main(void)
     // clears a bit in memory to disable DHCP
     etherDisableDhcpMode();
     // needs to be replaced by the number assigned to the group
-    etherSetIpAddress(192, 168, 1, 138);
+    etherSetIpAddress(192, 168, 10, 138);
 
     etherSetIpSubnetMask(255, 255, 255, 0);
     // this is the address that gets you to the web
@@ -177,6 +177,13 @@ int main(void)
 
     sendSyn(data);
 
+
+
+
+
+
+    uint8_t b = 0;
+    b = b+1;
     // Main Loop
     // RTOS and interrupts would greatly improve this code,
     // but the goal here is simplicity
@@ -206,6 +213,12 @@ int main(void)
             {
                 etherSendArpResponse(data);
             }
+
+            if(isEtherSYNACK(data))
+              {
+                  sendAck(data);
+              }
+
 
             // Handle IP datagram
             if (etherIsIp(data))
@@ -247,6 +260,7 @@ int main(void)
 
                 }
             }
+
         }
     }
 

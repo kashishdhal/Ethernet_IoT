@@ -639,6 +639,13 @@ uint16_t htons(uint16_t value)
 }
 #define ntohs htons
 
+uint32_t htons32(uint32_t value)
+{
+    return ( ( (value & 0xFF000000) >> 24 ) + ( (value & 0xFF0000) >> 8) + ((value & 0xFF00) << 8) +  ((value & 0xFF) << 24));
+}
+
+#define ntohs32 htons32
+
 // Determines whether packet is IP datagram
 bool etherIsIp(uint8_t packet[])
 {
@@ -652,6 +659,20 @@ bool etherIsIp(uint8_t packet[])
         etherSumWords(&ip->revSize, (ip->revSize & 0xF) * 4);
         ok = (getEtherChecksum() == 0);
     }
+    return ok;
+}
+
+// Determines whether packet is IP datagram
+bool isEtherSYNACK(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+
+    bool ok;
+    uint16_t a = (tcp->dataResFlags)&0xFF00;
+    uint16_t b = htons(0x12);
+    ok = ( a == b);
     return ok;
 }
 
@@ -1172,3 +1193,103 @@ void sendSyn(uint8_t packet[])
 
 }
 
+void sendAck(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+
+
+    // MAC address of the red board
+    ether->sourceAddress[0] = 0x02;
+    ether->sourceAddress[1] = 0x03;
+    ether->sourceAddress[2] = 0x04;
+    ether->sourceAddress[3] = 0x05;
+    ether->sourceAddress[4] = 0x06;
+    ether->sourceAddress[5] = 0x07;
+
+    // MAC address of the Linux PC
+    ether->destAddress[0] = 0x1c;
+    ether->destAddress[1] = 0x69;
+    ether->destAddress[2] = 0x7a;
+    ether->destAddress[3] = 0x07;
+    ether->destAddress[4] = 0x94;
+    ether->destAddress[5] = 0xe3;
+
+    // Frame Type is IP
+    ether->frameType = htons(0x0800);
+
+    //Version
+    ip->revSize = 0x45;
+
+    // Services Field
+    ip->typeOfService = 0x00;
+
+    // Total length
+    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 0); // 20 bytes header and 0 bytes options
+
+    // IP address of the source
+    ip->sourceIp[0] = 192;
+    ip->sourceIp[1] = 168;
+    ip->sourceIp[2] = 10;
+    ip->sourceIp[3] = 138;
+
+    // IP address of the destination
+    ip->destIp[0] = 192;
+    ip->destIp[1] = 168;
+    ip->destIp[2] = 10;
+    ip->destIp[3] = 2;
+
+    ip->id = 0x0000;
+
+    ip->flagsAndOffset = htons(0x4000);
+
+    ip->ttl = 0x80; // or 128 in decimal
+
+    ip->protocol = 0x06; //tcp
+
+    // 32-bit sum over ip header
+    sum = 0;
+    etherSumWords(&ip->revSize, 10);
+    etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
+    ip->headerChecksum = getEtherChecksum();
+
+    tcp->destPort = htons(1883);
+
+    tcp->sourcePort = htons(6215);
+    tcp->ackNum = tcp->seqNum + htons32(1);
+    tcp->seqNum = htons32(1);
+
+   // tcp->ackNum = 0;
+
+
+    uint8_t dataOff =  (20+0)/4; // 20 Bytes header + 0 Bytes options
+    uint8_t res = 0;
+    uint16_t flags = 0x0010; // ACK
+    tcp->dataResFlags = htons( dataOff<<12 | (res>>5)<<9 | flags );
+
+    tcp->winSize = htons(1280);
+
+    tcp->urgPointer = 0;
+    tcp->data=0;
+    tcp->check=0;
+
+
+    // calculate Checksum
+
+    uint16_t tcpLength = htons(20 + 0);
+    // 32-bit sum over pseudo-header
+    sum = 0;
+    etherSumWords(ip->sourceIp, 8);
+    uint16_t tmp16 = ip->protocol;
+    sum += (tmp16 & 0xff) << 8;
+    etherSumWords(&tcpLength, 2);
+
+    etherSumWords(tcp, 20+0);
+
+    tcp->check = getEtherChecksum();
+
+    etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 0);
+
+
+}

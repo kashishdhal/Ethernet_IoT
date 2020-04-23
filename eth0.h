@@ -82,9 +82,14 @@ void etherSetMacAddress(uint8_t mac0, uint8_t mac1, uint8_t mac2, uint8_t mac3, 
 void etherGetMacAddress(uint8_t mac[6]);
 
 bool etherIsTcp(uint8_t packet[]);
+bool isEtherSYNACK(uint8_t packet[]);
 void sendSyn(uint8_t packet[]);
-void mqttPublisher();
+void sendAck(uint8_t packet[]);
+
 uint16_t htons(uint16_t value);
 #define ntohs htons
+
+uint32_t htons32(uint32_t value);
+#define ntohs32 htons32
 
 #endif
