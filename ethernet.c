@@ -218,6 +218,13 @@ int main(void)
 
               }
 
+            if(isEtherConnectACK(data))
+              {
+
+                publishMqttMessage(data);
+
+
+              }
 
             // Handle IP datagram
             if (etherIsIp(data))

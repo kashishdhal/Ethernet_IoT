@@ -83,9 +83,13 @@ void etherGetMacAddress(uint8_t mac[6]);
 
 bool etherIsTcp(uint8_t packet[]);
 bool isEtherSYNACK(uint8_t packet[]);
+bool isEtherConnectACK(uint8_t packet[]);
+
 void sendSyn(uint8_t packet[]);
 void sendAck(uint8_t packet[]);
 void sendConnectCmd(uint8_t packet[]);
+void publishMqttMessage(uint8_t packet[]);
+
 
 uint16_t htons(uint16_t value);
 #define ntohs htons

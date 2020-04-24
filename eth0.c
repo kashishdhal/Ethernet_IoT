@@ -25,6 +25,7 @@
 #include <eth0.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include "tm4c123gh6pm.h"
 #include "wait.h"
 #include "gpio.h"
@@ -220,7 +221,7 @@ typedef struct _tcpFrame // 20 bytes + options
   uint8_t options[4];
 } tcpFrame;
 
-typedef struct _mqttFrame // 20 bytes + options
+typedef struct _mqttFrame
 {
    uint8_t control;
    uint8_t msgLength;
@@ -233,6 +234,15 @@ typedef struct _mqttFrame // 20 bytes + options
    uint8_t clientId[23];
 
 } mqttFrame;
+
+typedef struct _mqttPublishFrame
+{
+   uint8_t control;
+   uint8_t msgLength;
+   uint16_t topicLength;
+   uint8_t topicNameAndMessage[100];
+} mqttPublishFrame;
+
 
 
 //-----------------------------------------------------------------------------
@@ -663,6 +673,18 @@ bool etherIsIp(uint8_t packet[])
 }
 
 // Determines whether packet is IP datagram
+bool isEtherConnectACK(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+    mqttFrame* mqtt = (mqttFrame*)&tcp->data;
+
+    bool ok;
+    ok = ( mqtt->control == 0x20);
+    return ok;
+}
+
 bool isEtherSYNACK(uint8_t packet[])
 {
     etherFrame* ether = (etherFrame*)packet;
@@ -1018,79 +1040,6 @@ bool etherIsTcp(uint8_t packet[])
     return ok;
 }
 
-//void sendSyn(uint8_t packet[])
-//{
-//    etherFrame* ether = (etherFrame*)packet;
-//    ipFrame* ip = (ipFrame*)&ether->data;
-//    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
-//    uint8_t *copyData;
-//    uint8_t i, tmp8;
-//    uint16_t tmp16;
-//    // swap source and destination fields
-//    for (i = 0; i < HW_ADD_LENGTH; i++)
-//    {
-//        tmp8 = ether->destAddress[i];
-//        ether->destAddress[i] = ether->sourceAddress[i];
-//        ether->sourceAddress[i] = tmp8;
-//    }
-//    for (i = 0; i < IP_ADD_LENGTH; i++)
-//    {
-//        tmp8 = ip->destIp[i];
-//        ip->destIp[i] = ip->sourceIp[i];
-//        ip->sourceIp[i] = tmp8;
-//    }
-//    ip->flagsAndOffset =0x0000;
-//    tcp->destPort = tcp->sourcePort;
-//
-//    tcp->sourcePort = htons(23);
-//
-//    tcp->seqNum = 0x0000;
-//
-//    tcp->ackNum = 0x00000001;
-//
-//    uint8_t dataOff =  (20+4)/4; // 20 Bytes header + 4 Bytes options
-//    uint8_t res = 0;
-//    uint16_t flags = 0x12; // SYN + ACK
-//    tcp->dataResFlags = htons( dataOff<<12 | (res>>5)<<9 | flags );
-//
-//    tcp->winSize = htons(1280);
-//
-//    tcp->urgPointer = 0;
-//
-//    tcp->options[0]= 2; //Kind = Maximum Segment Size
-//    tcp->options[1]= 4; // Length = 4
-//    tcp->options[2]= htons(1460); // Value = 1460 Bytes
-//    tcp->data=0;
-//    tcp->check=0;
-//    // adjust lengths
-//    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 4); // 20 bytes header and 4 bytes options
-//
-//    // 32-bit sum over ip header
-//    sum = 0;
-//    etherSumWords(&ip->revSize, 10);
-//    etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
-//    ip->headerChecksum = getEtherChecksum();
-//
-//    // calculate Checksum
-//
-//    uint16_t tcpLength = htons(20 + 4);
-//    // 32-bit sum over pseudo-header
-//    sum = 0;
-//    etherSumWords(ip->sourceIp, 8);
-//    tmp16 = ip->protocol;
-//    sum += (tmp16 & 0xff) << 8;
-//    etherSumWords(&tcpLength, 2);
-//
-//    etherSumWords(tcp, 20+4);
-//
-//    tcp->check = getEtherChecksum();
-//
-//    etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 4);
-//
-//
-//}
-
-
 void sendSyn(uint8_t packet[])
 {
     etherFrame* ether = (etherFrame*)packet;
@@ -1329,9 +1278,6 @@ void sendConnectCmd(uint8_t packet[])
     // Services Field
     ip->typeOfService = 0x00;
 
-    // Total length
-    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 0 + 19); // 20 IP header + 0 TCP options + 19 MQTT
-
     // IP address of the source
     ip->sourceIp[0] = 192;
     ip->sourceIp[1] = 168;
@@ -1351,12 +1297,6 @@ void sendConnectCmd(uint8_t packet[])
     ip->ttl = 0x80; // or 128 in decimal
 
     ip->protocol = 0x06; //tcp
-
-    // 32-bit sum over ip header
-    sum = 0;
-    etherSumWords(&ip->revSize, 10);
-    etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
-    ip->headerChecksum = getEtherChecksum();
 
     tcp->destPort = htons(1883);
 
@@ -1395,19 +1335,26 @@ void sendConnectCmd(uint8_t packet[])
 
     mqtt->ttl = htons(60);
 
-    mqtt->clientIdLength = htons(5);
+    char clientId[50] = "hello";
 
-    mqtt->clientId[0] = (uint8_t)'h';
-    mqtt->clientId[1] = (uint8_t)'e';
-    mqtt->clientId[2] = (uint8_t)'l';
-    mqtt->clientId[3] = (uint8_t)'l';
-    mqtt->clientId[4] = (uint8_t)'0';
+    strcpy(mqtt->clientId,clientId);
 
-    mqtt->msgLength = 12 + 5; // 12 Bytes + Client ID array size
+    mqtt->clientIdLength = htons(strlen(mqtt->clientId));
+
+    mqtt->msgLength = 12 + strlen(mqtt->clientId); // 12 Bytes + Client ID array size
+
+    // Total length
+    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + mqtt->msgLength+2); // 20 IP header + 0 TCP options + 19 MQTT
+
+    // 32-bit sum over ip header
+    sum = 0;
+    etherSumWords(&ip->revSize, 10);
+    etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
+    ip->headerChecksum = getEtherChecksum();
 
     // calculate Checksum
 
-    uint16_t tcpLength = htons(20+19);
+    uint16_t tcpLength = htons(20+mqtt->msgLength+2);
     // 32-bit sum over pseudo-header
     sum = 0;
     etherSumWords(ip->sourceIp, 8);
@@ -1415,11 +1362,127 @@ void sendConnectCmd(uint8_t packet[])
     sum += (tmp16 & 0xff) << 8;
     etherSumWords(&tcpLength, 2);
 
-    etherSumWords(tcp, 20+19);
+    etherSumWords(tcp, 20+mqtt->msgLength+2);
 
     tcp->check = getEtherChecksum();
 
-    etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 19);
+    etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + mqtt->msgLength+2);
 
 
 }
+
+void publishMqttMessage(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+    mqttPublishFrame* mqtt = (mqttPublishFrame*)&tcp->data;
+
+    // MAC address of the red board
+    ether->sourceAddress[0] = 0x02;
+    ether->sourceAddress[1] = 0x03;
+    ether->sourceAddress[2] = 0x04;
+    ether->sourceAddress[3] = 0x05;
+    ether->sourceAddress[4] = 0x06;
+    ether->sourceAddress[5] = 0x07;
+
+    // MAC address of the Linux PC
+    ether->destAddress[0] = 0x1c;
+    ether->destAddress[1] = 0x69;
+    ether->destAddress[2] = 0x7a;
+    ether->destAddress[3] = 0x07;
+    ether->destAddress[4] = 0x94;
+    ether->destAddress[5] = 0xe3;
+
+    // Frame Type is IP
+    ether->frameType = htons(0x0800);
+
+    //Version
+    ip->revSize = 0x45;
+
+    // Services Field
+    ip->typeOfService = 0x00;
+
+    // IP address of the source
+    ip->sourceIp[0] = 192;
+    ip->sourceIp[1] = 168;
+    ip->sourceIp[2] = 10;
+    ip->sourceIp[3] = 138;
+
+    // IP address of the destination
+    ip->destIp[0] = 192;
+    ip->destIp[1] = 168;
+    ip->destIp[2] = 10;
+    ip->destIp[3] = 2;
+
+    ip->id = 0x0000;
+
+    ip->flagsAndOffset = htons(0x4000);
+
+    ip->ttl = 0x80; // or 128 in decimal
+
+    ip->protocol = 0x06; //tcp
+
+    tcp->destPort = htons(1883);
+
+    tcp->sourcePort = htons(6215);
+
+    uint32_t ackNum = tcp->ackNum;
+    uint32_t seqNum = tcp->seqNum;
+
+    tcp->ackNum = seqNum + htons32(1);
+    tcp->seqNum = ackNum;
+
+    uint8_t dataOff =  (20+0)/4; // 20 Bytes header + 0 Bytes options
+    uint8_t res = 0;
+    uint16_t flags = 0x0018; // PSH ACK
+    tcp->dataResFlags = htons( dataOff<<12 | (res>>5)<<9 | flags );
+
+    tcp->winSize = htons(1280);
+
+    tcp->urgPointer = 0;
+    tcp->data=0;
+    tcp->check=0;
+
+
+    mqtt->control = 0x30;
+
+    char topicName[20] = "test/topic1";
+    char topicMessage[100] = "This is a test message to check if everything is okay";
+
+    strcat( mqtt->topicNameAndMessage, topicName);
+    strcat( mqtt->topicNameAndMessage, topicMessage);
+
+    mqtt->topicLength = htons(strlen(topicName));
+
+    mqtt->msgLength = strlen(mqtt->topicNameAndMessage); //
+
+
+    // Total length
+     ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + mqtt->msgLength+2); // 20 IP header + 0 TCP options + 19 MQTT
+
+     // 32-bit sum over ip header
+     sum = 0;
+     etherSumWords(&ip->revSize, 10);
+     etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
+     ip->headerChecksum = getEtherChecksum();
+
+    // calculate TCP Checksum
+
+    uint16_t tcpLength = htons(20+mqtt->msgLength+2);
+    // 32-bit sum over pseudo-header
+    sum = 0;
+    etherSumWords(ip->sourceIp, 8);
+    uint16_t tmp16 = ip->protocol;
+    sum += (tmp16 & 0xff) << 8;
+    etherSumWords(&tcpLength, 2);
+
+    etherSumWords(tcp, 20+mqtt->msgLength+2);
+
+    tcp->check = getEtherChecksum();
+
+    etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + mqtt->msgLength+2);
+
+
+}
+
