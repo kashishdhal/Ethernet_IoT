@@ -140,6 +140,8 @@ int main(void)
     uint8_t* udpData;
     uint8_t data[MAX_PACKET_SIZE];
 
+    uint8_t flag = 0;
+
     // Init controller
     initHw();
 
@@ -210,11 +212,13 @@ int main(void)
 
             if(isEtherSYNACK(data))
               {
+
                   sendAck(data);
 
                   waitMicrosecond(100000);
 
                   sendConnectCmd(data);
+
 
               }
 
@@ -223,6 +227,24 @@ int main(void)
 
                 publishMqttMessage(data);
 
+                waitMicrosecond(100000);
+
+                flag = 1;
+
+              }
+
+
+            if(isEtherACK(data) & flag )
+              {
+
+                disconnectRequest(data);
+
+              }
+
+            if(isEtherFINACK(data))
+              {
+
+                sendAck(data);
 
               }
 
