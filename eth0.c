@@ -216,8 +216,8 @@ typedef struct _tcpFrame // 20 bytes + options
   uint16_t winSize;
   uint16_t check;
   uint16_t urgPointer;
-  uint8_t options[4];
   uint8_t  data;
+  uint8_t options[4];
 } tcpFrame;
 
 typedef struct _mqttFrame // 20 bytes + options
@@ -1018,6 +1018,79 @@ bool etherIsTcp(uint8_t packet[])
     return ok;
 }
 
+//void sendSyn(uint8_t packet[])
+//{
+//    etherFrame* ether = (etherFrame*)packet;
+//    ipFrame* ip = (ipFrame*)&ether->data;
+//    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+//    uint8_t *copyData;
+//    uint8_t i, tmp8;
+//    uint16_t tmp16;
+//    // swap source and destination fields
+//    for (i = 0; i < HW_ADD_LENGTH; i++)
+//    {
+//        tmp8 = ether->destAddress[i];
+//        ether->destAddress[i] = ether->sourceAddress[i];
+//        ether->sourceAddress[i] = tmp8;
+//    }
+//    for (i = 0; i < IP_ADD_LENGTH; i++)
+//    {
+//        tmp8 = ip->destIp[i];
+//        ip->destIp[i] = ip->sourceIp[i];
+//        ip->sourceIp[i] = tmp8;
+//    }
+//    ip->flagsAndOffset =0x0000;
+//    tcp->destPort = tcp->sourcePort;
+//
+//    tcp->sourcePort = htons(23);
+//
+//    tcp->seqNum = 0x0000;
+//
+//    tcp->ackNum = 0x00000001;
+//
+//    uint8_t dataOff =  (20+4)/4; // 20 Bytes header + 4 Bytes options
+//    uint8_t res = 0;
+//    uint16_t flags = 0x12; // SYN + ACK
+//    tcp->dataResFlags = htons( dataOff<<12 | (res>>5)<<9 | flags );
+//
+//    tcp->winSize = htons(1280);
+//
+//    tcp->urgPointer = 0;
+//
+//    tcp->options[0]= 2; //Kind = Maximum Segment Size
+//    tcp->options[1]= 4; // Length = 4
+//    tcp->options[2]= htons(1460); // Value = 1460 Bytes
+//    tcp->data=0;
+//    tcp->check=0;
+//    // adjust lengths
+//    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 4); // 20 bytes header and 4 bytes options
+//
+//    // 32-bit sum over ip header
+//    sum = 0;
+//    etherSumWords(&ip->revSize, 10);
+//    etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
+//    ip->headerChecksum = getEtherChecksum();
+//
+//    // calculate Checksum
+//
+//    uint16_t tcpLength = htons(20 + 4);
+//    // 32-bit sum over pseudo-header
+//    sum = 0;
+//    etherSumWords(ip->sourceIp, 8);
+//    tmp16 = ip->protocol;
+//    sum += (tmp16 & 0xff) << 8;
+//    etherSumWords(&tcpLength, 2);
+//
+//    etherSumWords(tcp, 20+4);
+//
+//    tcp->check = getEtherChecksum();
+//
+//    etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 4);
+//
+//
+//}
+
+
 void sendSyn(uint8_t packet[])
 {
     etherFrame* ether = (etherFrame*)packet;
@@ -1257,7 +1330,7 @@ void sendConnectCmd(uint8_t packet[])
     ip->typeOfService = 0x00;
 
     // Total length
-    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 19); // 20 IP header + 0 TCP options + 19 MQTT
+    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 0 + 19); // 20 IP header + 0 TCP options + 19 MQTT
 
     // IP address of the source
     ip->sourceIp[0] = 192;
@@ -1307,9 +1380,34 @@ void sendConnectCmd(uint8_t packet[])
     tcp->check=0;
 
 
+    mqtt->control = 0x10;
+
+    mqtt->nameLength = htons(4);
+
+    mqtt->name[0] = (uint8_t)'M';
+    mqtt->name[1] = (uint8_t)'Q';
+    mqtt->name[2] = (uint8_t)'T';
+    mqtt->name[3] = (uint8_t)'T';
+
+    mqtt->version = 4;
+
+    mqtt->connectFlag = 0x02;
+
+    mqtt->ttl = htons(60);
+
+    mqtt->clientIdLength = htons(5);
+
+    mqtt->clientId[0] = (uint8_t)'h';
+    mqtt->clientId[1] = (uint8_t)'e';
+    mqtt->clientId[2] = (uint8_t)'l';
+    mqtt->clientId[3] = (uint8_t)'l';
+    mqtt->clientId[4] = (uint8_t)'0';
+
+    mqtt->msgLength = 12 + 5; // 12 Bytes + Client ID array size
+
     // calculate Checksum
 
-    uint16_t tcpLength = htons(20 + 19);
+    uint16_t tcpLength = htons(20+19);
     // 32-bit sum over pseudo-header
     sum = 0;
     etherSumWords(ip->sourceIp, 8);
@@ -1320,31 +1418,6 @@ void sendConnectCmd(uint8_t packet[])
     etherSumWords(tcp, 20+19);
 
     tcp->check = getEtherChecksum();
-
-    mqtt->control = 0x10;
-
-    mqtt->nameLength = htons(4);
-
-    mqtt->name[0] = "M";
-    mqtt->name[1] = "Q";
-    mqtt->name[2] = "T";
-    mqtt->name[3] = "T";
-
-    mqtt->version = 4;
-
-    mqtt->connectFlag = 0x02;
-
-    mqtt->ttl = htons(60);
-
-    mqtt->clientIdLength = htons(5);
-
-    mqtt->clientId[0] = "h";
-    mqtt->clientId[1] = "e";
-    mqtt->clientId[2] = "l";
-    mqtt->clientId[3] = "l";
-    mqtt->clientId[4] = "0";
-
-    mqtt->msgLength = 12 + 5; // 12 Bytes + Client ID array size
 
     etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 19);
 
