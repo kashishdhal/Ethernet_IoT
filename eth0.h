@@ -85,6 +85,7 @@ bool etherIsTcp(uint8_t packet[]);
 bool isEtherSYNACK(uint8_t packet[]);
 void sendSyn(uint8_t packet[]);
 void sendAck(uint8_t packet[]);
+void sendConnectCmd(uint8_t packet[]);
 
 uint16_t htons(uint16_t value);
 #define ntohs htons

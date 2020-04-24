@@ -175,15 +175,9 @@ int main(void)
     setPinValue(GREEN_LED, 0);
     waitMicrosecond(100000);
 
+    waitMicrosecond(1000000);
     sendSyn(data);
 
-
-
-
-
-
-    uint8_t b = 0;
-    b = b+1;
     // Main Loop
     // RTOS and interrupts would greatly improve this code,
     // but the goal here is simplicity
@@ -217,6 +211,11 @@ int main(void)
             if(isEtherSYNACK(data))
               {
                   sendAck(data);
+
+                  waitMicrosecond(100000);
+
+                  sendConnectCmd(data);
+
               }
 
 
