@@ -30,6 +30,7 @@
 #include "wait.h"
 #include "gpio.h"
 #include "spi0.h"
+#include "shell.h"
 
 // Pins
 #define CS PORTA,3

@@ -43,12 +43,31 @@
 #include "spi0.h"
 #include "uart0.h"
 #include "wait.h"
+#include "shell.h"
 
 // Pins
 #define RED_LED PORTF,1
 #define BLUE_LED PORTF,2
 #define GREEN_LED PORTF,3
 #define PUSH_BUTTON PORTF,4
+
+// ------------------------------------------------------------------------------
+//  Globals
+// ------------------------------------------------------------------------------
+uint8_t publishFlag = 0;
+
+
+
+typedef enum
+{
+    SynSent,
+    Established,
+    FinWait1,
+    FinWait2,
+    TimeWait,
+    closed
+} TCPState;
+
 
 //-----------------------------------------------------------------------------
 // Subroutines                
@@ -151,7 +170,7 @@ int main(void)
 
     // Init ethernet interface (eth0)
     putsUart0("\n\rStarting eth0\n\r");
-    etherSetMacAddress(2, 3, 4, 5, 6, 138);
+    etherSetMacAddress(2, 3, 4, 5, 6, 7);
 
     // Unicast is needed to respond to others MAC
     // Broadcast is needed to repond to "who are you?"
@@ -178,7 +197,15 @@ int main(void)
     waitMicrosecond(100000);
 
     waitMicrosecond(1000000);
-    sendSyn(data);
+
+
+    // Print Welcome message on the console
+    putcUart0(0x0a); putcUart0(0x0d); putcUart0(0x0a); putcUart0(0x0d);
+    putsUart0("Please enter the command");
+    putcUart0(0x0a); putcUart0(0x0d); putsUart0(">>");
+
+    TCPState NextState = closed;
+
 
     // Main Loop
     // RTOS and interrupts would greatly improve this code,
@@ -188,66 +215,78 @@ int main(void)
         // Put terminal processing here
         if (kbhitUart0())
         {
+              getString();
+              // To process the string, calculate the positions of arguments
+              posArg(); parseString();
+              isCommand();
         }
 
-
-        // Packet processing
-        if (etherIsDataAvailable())
+        if(publishFlag)
         {
-            if (etherIsOverflow())
+        switch(NextState)
+        {
+            case closed:
+                sendSyn(data);
+                break;
+
+            // Packet processing
+            if (etherIsDataAvailable())
             {
-                setPinValue(RED_LED, 1);
-                waitMicrosecond(100000);
-                setPinValue(RED_LED, 0);
+                if (etherIsOverflow())
+                {
+                    setPinValue(RED_LED, 1);
+                    waitMicrosecond(100000);
+                    setPinValue(RED_LED, 0);
+                }
+
+                // Get packet
+                etherGetPacket(data, MAX_PACKET_SIZE);
+
+                // Handle ARP request
+                if (etherIsArpRequest(data))
+                {
+                    etherSendArpResponse(data);
+                }
+
+                if(isEtherSYNACK(data))
+                  {
+
+                      sendAck(data);
+
+                      waitMicrosecond(100000);
+
+                      sendConnectCmd(data);
+
+
+                  }
+
+                if(isEtherConnectACK(data))
+                  {
+
+                    publishMqttMessage(data);
+
+                    flag = 1;
+
+                  }
+
+
+                if(isEtherACK(data) & flag )
+                  {
+
+                    disconnectRequest(data);
+
+                    flag = 0;
+
+                  }
+
+                if(isEtherFINACK(data))
+                  {
+
+                    sendAck(data);
+
+                  }
             }
-
-            // Get packet
-            etherGetPacket(data, MAX_PACKET_SIZE);
-
-            // Handle ARP request
-            if (etherIsArpRequest(data))
-            {
-                etherSendArpResponse(data);
-            }
-
-            if(isEtherSYNACK(data))
-              {
-
-                  sendAck(data);
-
-                  waitMicrosecond(100000);
-
-                  sendConnectCmd(data);
-
-
-              }
-
-            if(isEtherConnectACK(data))
-              {
-
-                publishMqttMessage(data);
-
-                waitMicrosecond(100000);
-
-                flag = 1;
-
-              }
-
-
-            if(isEtherACK(data) & flag )
-              {
-
-                disconnectRequest(data);
-
-              }
-
-            if(isEtherFINACK(data))
-              {
-
-                sendAck(data);
-
-              }
-
+        }
             // Handle IP datagram
             if (etherIsIp(data))
             {
