@@ -1480,8 +1480,8 @@ void publishMqttMessage(uint8_t packet[])
 
     mqtt->control = 0x30;
 
-    char topicName[20] = "test/topic1";
-    char topicMessage[100] = "This is a test message to check if everything is okay";
+    char topicName[20];
+    char topicMessage[100];
 
     strcpy(topicName,str2);
     strcpy(topicMessage,str3);

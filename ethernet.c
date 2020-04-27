@@ -58,18 +58,6 @@ uint8_t publishFlag = 0;
 
 
 
-typedef enum
-{
-    SynSent,
-    SynAckRcvd,
-    Established,
-    publishMQTT,
-    disconnectReq,
-    FinWait1,
-    FinWait2,
-    TimeWait,
-    closed
-} TCPState;
 
 
 //-----------------------------------------------------------------------------
@@ -166,6 +154,8 @@ void displayConnectionInfo()
 // Max packet is calculated as:
 // Ether frame header (18) + Max MTU (1500) + CRC (4)
 #define MAX_PACKET_SIZE 1522
+TCPState NextState = closed;
+
 
 int main(void)
 {
@@ -217,7 +207,7 @@ int main(void)
 //
 
    // sendSyn(data);
-    TCPState NextState = closed;
+
 
     // Main Loop
     // RTOS and interrupts would greatly improve this code,
@@ -233,14 +223,6 @@ int main(void)
               posArg(); parseString();
               isCommand();
         }
-
-        if(publishFlag)
-        {
-            sendSyn(data);
-            NextState = SynSent;
-            publishFlag=0;
-        }
-
 
         // Packet processing
         if (etherIsDataAvailable())
@@ -275,13 +257,18 @@ int main(void)
                 }
             }
 
+        if(publishFlag)
+        {
+//            sendSyn(data);
+//            NextState = SynSent;
+
 
         switch(NextState)
         {
-//            case closed:
-//                sendSyn(data);
-//                NextState = SynSent;
-//                break;
+            case closed:
+                sendSyn(data);
+                NextState = SynSent;
+                break;
 
             case SynSent:
 
@@ -344,6 +331,9 @@ int main(void)
                 publishFlag = 0;
                 break;
 
+
+
+            }
             }
 
 

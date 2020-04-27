@@ -22,6 +22,8 @@ char str3[30];
 uint8_t pos[MAX_FIELDS];
 uint8_t argCount=0;
 extern uint8_t publishFlag;
+extern TCPState NextState;
+
 
 void posArg()
 {
@@ -118,6 +120,7 @@ void isCommand()
     if(strcmp(str1,"publish")==0)
     {
             publishFlag=1;
+            NextState = closed;
             putsUart0("\n\r");
     }
     else if(strcmp("reboot", str1)==0 )

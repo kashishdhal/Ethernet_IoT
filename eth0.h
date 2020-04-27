@@ -42,6 +42,19 @@
 #define LOBYTE(x) ((x) & 0xFF)
 #define HIBYTE(x) (((x) >> 8) & 0xFF)
 
+typedef enum
+{
+    SynSent,
+    SynAckRcvd,
+    Established,
+    publishMQTT,
+    disconnectReq,
+    FinWait1,
+    FinWait2,
+    TimeWait,
+    closed
+} TCPState;
+
 //-----------------------------------------------------------------------------
 // Subroutines
 //-----------------------------------------------------------------------------
