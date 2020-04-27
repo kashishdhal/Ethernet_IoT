@@ -238,7 +238,7 @@ int main(void)
         {
             sendSyn(data);
             NextState = SynSent;
-           publishFlag=0;
+            publishFlag=0;
         }
 
 

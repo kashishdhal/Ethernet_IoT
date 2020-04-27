@@ -1401,6 +1401,9 @@ void sendConnectCmd(uint8_t packet[])
 
 }
 
+extern char str2[30];
+extern char str3[30];
+
 void publishMqttMessage(uint8_t packet[])
 {
     etherFrame* ether = (etherFrame*)packet;
@@ -1480,12 +1483,15 @@ void publishMqttMessage(uint8_t packet[])
     char topicName[20] = "test/topic1";
     char topicMessage[100] = "This is a test message to check if everything is okay";
 
+    strcpy(topicName,str2);
+    strcpy(topicMessage,str3);
+
     strcat( mqtt->topicNameAndMessage, topicName);
     strcat( mqtt->topicNameAndMessage, topicMessage);
 
     mqtt->topicLength = htons(strlen(topicName));
 
-    mqtt->msgLength = strlen(mqtt->topicNameAndMessage); //
+    mqtt->msgLength = strlen(mqtt->topicNameAndMessage)+2; //
 
 
     // Total length

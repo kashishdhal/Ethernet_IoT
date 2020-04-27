@@ -117,16 +117,8 @@ void isCommand()
 {
     if(strcmp(str1,"publish")==0)
     {
-        if(strcmp(str2,"on")==0)
-        {
             publishFlag=1;
             putsUart0("\n\r");
-
-        }
-        if(strcmp(str2,"off")==0)
-        {
-            publishFlag=0;
-        }
     }
     else if(strcmp("reboot", str1)==0 )
     {
