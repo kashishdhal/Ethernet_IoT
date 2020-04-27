@@ -276,14 +276,14 @@ int main(void)
 
 
             case Established:
-                putsUart0("\n\rCurrent state: Established\n\r");
+           //     putsUart0("\n\rCurrent state: Established\n\r");
                 sendConnectCmd(data);
                 if(publishFlag){NextState = publishMQTT;}
                 if(subscribeFlag){NextState = subscribeMQTT;}
                 break;
 
             case publishMQTT:
-                putsUart0("\n\rCurrent state: Publish MQTT\n\r");
+              //  putsUart0("\n\rCurrent state: Publish MQTT\n\r");
                 if(isEtherConnectACK(data))
                   {
                     publishMqttMessage(data);
@@ -292,17 +292,17 @@ int main(void)
                 break;
 
             case subscribeMQTT:
-                putsUart0("\n\rCurrent state: Subscribe MQTT\n\r");
+              //  putsUart0("\n\rCurrent state: Subscribe MQTT\n\r");
                 if(isEtherConnectACK(data))
                   {
                     subscribeRequest(data);
                     NextState = subAck;
-                    putsUart0("\n\rCurrent state: subAck\n\r");
+                  //  putsUart0("\n\rCurrent state: subAck\n\r");
                   }
                 break;
 
             case disconnectReq:
-                putsUart0("\n\rCurrent state: disconnect Req\n\r");
+             //   putsUart0("\n\rCurrent state: disconnect Req\n\r");
                 if(isEtherACK(data))
                   {
                     disconnectRequest(data);
@@ -316,6 +316,7 @@ int main(void)
                 if(isEtherSubACK(data))
                   {
                     sendAck(data);
+                    putsUart0("\r\n Subscription Successful \n\r");
                     subscribeFlag = 0;
                   }
 
@@ -334,6 +335,7 @@ int main(void)
 
             case TimeWait:
                 waitMicrosecond(100000);
+                putsUart0("\r\n Publish Success \n\r");
                 NextState = closed;
                 publishFlag = 0;
                 break;
