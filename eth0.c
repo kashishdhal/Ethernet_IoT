@@ -130,7 +130,7 @@ uint32_t sum;
 uint8_t macAddress[HW_ADD_LENGTH] = {2,3,4,5,6,7};
 uint8_t ipAddress[IP_ADD_LENGTH] = {0,0,0,0};
 uint8_t ipSubnetMask[IP_ADD_LENGTH] = {255,255,255,0};
-uint8_t ipGwAddress[IP_ADD_LENGTH] = {0,0,0,0};
+uint8_t ipGwAddress[IP_ADD_LENGTH] = {192,168,10,1};
 bool    dhcpEnabled = true;
 
 // ------------------------------------------------------------------------------
@@ -1099,8 +1099,7 @@ void sendSyn(uint8_t packet[])
     // Services Field
     ip->typeOfService = 0x00;
 
-    // Total length
-    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 4); // 20 bytes header and 4 bytes options
+
 
     // IP address of the source
     ip->sourceIp[0] = 192;
@@ -1122,15 +1121,10 @@ void sendSyn(uint8_t packet[])
 
     ip->protocol = 0x06; //tcp
 
-    // 32-bit sum over ip header
-    sum = 0;
-    etherSumWords(&ip->revSize, 10);
-    etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
-    ip->headerChecksum = getEtherChecksum();
-
-    tcp->destPort = htons(1883);
 
     tcp->sourcePort = htons(6215);
+
+    tcp->destPort = htons(1883);
 
     tcp->seqNum = 0x0000;
 
@@ -1144,13 +1138,22 @@ void sendSyn(uint8_t packet[])
     tcp->winSize = htons(1280);
 
     tcp->urgPointer = 0;
-    tcp->data=0;
+    tcp->data=2; //0;
     tcp->check=0;
-    tcp->options[0]= 2; //Kind = Maximum Segment Size
-    tcp->options[1]= 4; // Length = 4
-    tcp->options[2]= htons(1280); // Value = 1460 Bytes
+    tcp->options[0]= 4; //2; //Kind = Maximum Segment Size
+    tcp->options[1]= htons(1280); //4; // Length = 4
+    tcp->options[2]= 0; // htons(1280); // Value = 1460 Bytes
 
     // calculate Checksum
+    //IP checksum
+    // Total length
+        ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 4); // 20 bytes header and 4 bytes options
+    // 32-bit sum over ip header
+    sum = 0;
+    etherSumWords(&ip->revSize, 10);
+    etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
+    ip->headerChecksum = getEtherChecksum();
+
 
     uint16_t tcpLength = htons(20 + 4);
     // 32-bit sum over pseudo-header

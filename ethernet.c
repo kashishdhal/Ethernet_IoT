@@ -61,7 +61,10 @@ uint8_t publishFlag = 0;
 typedef enum
 {
     SynSent,
+    SynAckRcvd,
     Established,
+    publishMQTT,
+    disconnectReq,
     FinWait1,
     FinWait2,
     TimeWait,
@@ -96,7 +99,10 @@ void displayConnectionInfo()
     char str[10];
     uint8_t mac[6];
     uint8_t ip[4];
+    putcUart0('\r');
+   putcUart0('\n');
     etherGetMacAddress(mac);
+
     putsUart0("HW: ");
     for (i = 0; i < 6; i++)
     {
@@ -105,7 +111,8 @@ void displayConnectionInfo()
         if (i < 6-1)
             putcUart0(':');
     }
-    putcUart0('\n\r');
+    putcUart0('\r');
+     putcUart0('\n');
     etherGetIpAddress(ip);
     putsUart0("IP: ");
     for (i = 0; i < 4; i++)
@@ -119,7 +126,8 @@ void displayConnectionInfo()
         putsUart0(" (dhcp)");
     else
         putsUart0(" (static)");
-    putcUart0('\n\r');
+    putcUart0('\r');
+     putcUart0('\n');
     etherGetIpSubnetMask(ip);
     putsUart0("SN: ");
     for (i = 0; i < 4; i++)
@@ -129,7 +137,8 @@ void displayConnectionInfo()
         if (i < 4-1)
             putcUart0('.');
     }
-    putcUart0('\n\r');
+    putcUart0('\r');
+     putcUart0('\n');
     etherGetIpGatewayAddress(ip);
     putsUart0("GW: ");
     for (i = 0; i < 4; i++)
@@ -139,11 +148,15 @@ void displayConnectionInfo()
         if (i < 4-1)
             putcUart0('.');
     }
-    putcUart0('\n\r');
+    putcUart0('\r');
+     putcUart0('\n');
     if (etherIsLinkUp())
         putsUart0("Link is up\n\r");
     else
         putsUart0("Link is down\n\r");
+    putcUart0('\r');
+      putcUart0('\n');
+
 }
 
 //-----------------------------------------------------------------------------
@@ -159,8 +172,6 @@ int main(void)
     uint8_t* udpData;
     uint8_t data[MAX_PACKET_SIZE];
 
-    uint8_t flag = 0;
-
     // Init controller
     initHw();
 
@@ -170,6 +181,7 @@ int main(void)
 
     // Init ethernet interface (eth0)
     putsUart0("\n\rStarting eth0\n\r");
+    etherSetIpAddress(192, 168, 10, 138);
     etherSetMacAddress(2, 3, 4, 5, 6, 7);
 
     // Unicast is needed to respond to others MAC
@@ -180,11 +192,11 @@ int main(void)
     // clears a bit in memory to disable DHCP
     etherDisableDhcpMode();
     // needs to be replaced by the number assigned to the group
-    etherSetIpAddress(192, 168, 10, 138);
+
 
     etherSetIpSubnetMask(255, 255, 255, 0);
     // this is the address that gets you to the web
-    etherSetIpGatewayAddress(192, 168, 1, 1);
+    etherSetIpGatewayAddress(192, 168, 10, 1);
     // wait for the chip to settle down
     waitMicrosecond(100000);
     // dump all the settings to ethernet chip
@@ -196,22 +208,23 @@ int main(void)
     setPinValue(GREEN_LED, 0);
     waitMicrosecond(100000);
 
-    waitMicrosecond(1000000);
 
 
-    // Print Welcome message on the console
-    putcUart0(0x0a); putcUart0(0x0d); putcUart0(0x0a); putcUart0(0x0d);
-    putsUart0("Please enter the command");
-    putcUart0(0x0a); putcUart0(0x0d); putsUart0(">>");
+//    // Print Welcome message on the console
+//    putcUart0(0x0a); putcUart0(0x0d); putcUart0(0x0a); putcUart0(0x0d);
+//    putsUart0("Please enter the command");
+//    putcUart0(0x0a); putcUart0(0x0d); putsUart0(">>");
+//
 
+   // sendSyn(data);
     TCPState NextState = closed;
-
 
     // Main Loop
     // RTOS and interrupts would greatly improve this code,
     // but the goal here is simplicity
     while (true)
     {
+
         // Put terminal processing here
         if (kbhitUart0())
         {
@@ -223,81 +236,120 @@ int main(void)
 
         if(publishFlag)
         {
+            sendSyn(data);
+            NextState = SynSent;
+           publishFlag=0;
+        }
+
+
+        // Packet processing
+        if (etherIsDataAvailable())
+        {
+            if (etherIsOverflow())
+            {
+                setPinValue(RED_LED, 1);
+                waitMicrosecond(100000);
+                setPinValue(RED_LED, 0);
+            }
+
+            // Get packet
+            etherGetPacket(data, MAX_PACKET_SIZE);
+
+            // Handle ARP request
+            if (etherIsArpRequest(data))
+            {
+                etherSendArpResponse(data);
+            }
+
+         //    Handle IP datagram
+            if (etherIsIp(data))
+            {
+                if (etherIsIpUnicast(data))
+                {
+                    // handle icmp ping request
+                    if (etherIsPingRequest(data))
+                    {
+                      etherSendPingResponse(data);
+                    }
+                }
+                }
+            }
+
+
         switch(NextState)
         {
-            case closed:
-                sendSyn(data);
-                break;
+//            case closed:
+//                sendSyn(data);
+//                NextState = SynSent;
+//                break;
 
-            // Packet processing
-            if (etherIsDataAvailable())
-            {
-                if (etherIsOverflow())
-                {
-                    setPinValue(RED_LED, 1);
-                    waitMicrosecond(100000);
-                    setPinValue(RED_LED, 0);
-                }
+            case SynSent:
 
-                // Get packet
-                etherGetPacket(data, MAX_PACKET_SIZE);
-
-                // Handle ARP request
-                if (etherIsArpRequest(data))
-                {
-                    etherSendArpResponse(data);
-                }
-
+                //putsUart0("\n\rCurrent state: syn sent\n\r");
                 if(isEtherSYNACK(data))
                   {
 
-                      sendAck(data);
-
-                      waitMicrosecond(100000);
-
-                      sendConnectCmd(data);
-
+                      NextState = SynAckRcvd;
 
                   }
+                break;
 
+            case SynAckRcvd:
+                sendAck(data);
+
+                NextState = Established;
+                break;
+
+
+            case Established:
+                putsUart0("\n\rCurrent state: Established\n\r");
+                sendConnectCmd(data);
+                NextState = publishMQTT;
+                break;
+
+            case publishMQTT:
+                putsUart0("\n\rCurrent state: Publish MQTT\n\r");
                 if(isEtherConnectACK(data))
                   {
-
                     publishMqttMessage(data);
-
-                    flag = 1;
-
+                    NextState = disconnectReq;
                   }
+                break;
 
-
-                if(isEtherACK(data) & flag )
+            case disconnectReq:
+                putsUart0("\n\rCurrent state: disconnect Req\n\r");
+                if(isEtherACK(data))
                   {
-
                     disconnectRequest(data);
-
-                    flag = 0;
-
+                    NextState = FinWait1;
                   }
 
+                break;
+
+            case FinWait1:
                 if(isEtherFINACK(data))
                   {
-
-                    sendAck(data);
-
+                    NextState = FinWait2;
                   }
-            }
-        }
-            // Handle IP datagram
-            if (etherIsIp(data))
-            {
-            	if (etherIsIpUnicast(data))
-            	{
-            		// handle icmp ping request
-					if (etherIsPingRequest(data))
-					{
-					  etherSendPingResponse(data);
-					}
+                break;
 
+            case FinWait2:
+                sendAck(data);
+                NextState = TimeWait;
+                break;
+
+            case TimeWait:
+                waitMicrosecond(100000);
+                NextState = closed;
+                publishFlag = 0;
+                break;
+
+            }
+
+
+
+        }
+    }
 
 
 //					// Process UDP datagram
@@ -316,26 +368,9 @@ int main(void)
 //						etherSendUdpResponse(data, (uint8_t*)"Received", 9);
 //					}
 //
-//					if (etherIsTcp(data))
-//					{
-//					    // If the data is TCP then it means server has sent SYN
-//					    // We reply to the server by sending back SYN ACK
-//					    // So let's create a frame to send it back
-//					    // And make it's state to SYN_RCVD
-//                        // clientSynRcvd(data);
+
 //					}
 
-                }
-            }
-
-        }
-    }
 
 
 
-
-
-
-
-
-}

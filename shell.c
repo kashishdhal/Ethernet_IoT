@@ -117,7 +117,21 @@ void isCommand()
 {
     if(strcmp(str1,"publish")==0)
     {
-           publishFlag=1;
+        if(strcmp(str2,"on")==0)
+        {
+            publishFlag=1;
+            putsUart0("\n\r");
+
+        }
+        if(strcmp(str2,"off")==0)
+        {
+            publishFlag=0;
+        }
+    }
+    else if(strcmp("reboot", str1)==0 )
+    {
+        putsUart0("\r\nRebooting.......................");
+        NVIC_APINT_R = NVIC_APINT_VECTKEY| NVIC_APINT_SYSRESETREQ;
     }
 
 }
