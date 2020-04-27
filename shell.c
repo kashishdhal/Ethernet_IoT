@@ -22,6 +22,7 @@ char str3[30];
 uint8_t pos[MAX_FIELDS];
 uint8_t argCount=0;
 extern uint8_t publishFlag;
+extern uint8_t subscribeFlag;
 extern TCPState NextState;
 
 
@@ -117,9 +118,16 @@ void getString()
 
 void isCommand()
 {
-    if(strcmp(str1,"publish")==0)
+    if(strcmp(str1,"pub")==0)
     {
             publishFlag=1;
+            NextState = closed;
+            putsUart0("\n\r");
+    }
+
+    if(strcmp(str1,"sub")==0)
+    {
+            subscribeFlag=1;
             NextState = closed;
             putsUart0("\n\r");
     }

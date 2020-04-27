@@ -55,9 +55,7 @@
 //  Globals
 // ------------------------------------------------------------------------------
 uint8_t publishFlag = 0;
-
-
-
+uint8_t subscribeFlag = 0;
 
 
 //-----------------------------------------------------------------------------
@@ -257,12 +255,8 @@ int main(void)
                 }
             }
 
-        if(publishFlag)
+        if(publishFlag | subscribeFlag)
         {
-//            sendSyn(data);
-//            NextState = SynSent;
-
-
         switch(NextState)
         {
             case closed:
@@ -271,19 +265,12 @@ int main(void)
                 break;
 
             case SynSent:
-
-                //putsUart0("\n\rCurrent state: syn sent\n\r");
                 if(isEtherSYNACK(data))
-                  {
-
-                      NextState = SynAckRcvd;
-
-                  }
+                  {NextState = SynAckRcvd;}
                 break;
 
             case SynAckRcvd:
                 sendAck(data);
-
                 NextState = Established;
                 break;
 
@@ -291,7 +278,8 @@ int main(void)
             case Established:
                 putsUart0("\n\rCurrent state: Established\n\r");
                 sendConnectCmd(data);
-                NextState = publishMQTT;
+                if(publishFlag){NextState = publishMQTT;}
+                if(subscribeFlag){NextState = subscribeMQTT;}
                 break;
 
             case publishMQTT:
@@ -300,6 +288,16 @@ int main(void)
                   {
                     publishMqttMessage(data);
                     NextState = disconnectReq;
+                  }
+                break;
+
+            case subscribeMQTT:
+                putsUart0("\n\rCurrent state: Subscribe MQTT\n\r");
+                if(isEtherConnectACK(data))
+                  {
+                    subscribeRequest(data);
+                    NextState = subAck;
+                    putsUart0("\n\rCurrent state: subAck\n\r");
                   }
                 break;
 
@@ -313,6 +311,15 @@ int main(void)
 
                 break;
 
+            case subAck:
+               // putsUart0("\n\rCurrent state: subAck\n\r");
+                if(isEtherSubACK(data))
+                  {
+                    sendAck(data);
+                    subscribeFlag = 0;
+                  }
+
+                break;
             case FinWait1:
                 if(isEtherFINACK(data))
                   {
@@ -330,9 +337,6 @@ int main(void)
                 NextState = closed;
                 publishFlag = 0;
                 break;
-
-
-
             }
             }
 
