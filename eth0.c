@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 #include "tm4c123gh6pm.h"
 #include "wait.h"
 #include "gpio.h"
@@ -132,6 +133,8 @@ uint8_t ipAddress[IP_ADD_LENGTH] = {0,0,0,0};
 uint8_t ipSubnetMask[IP_ADD_LENGTH] = {255,255,255,0};
 uint8_t ipGwAddress[IP_ADD_LENGTH] = {192,168,10,1};
 bool    dhcpEnabled = true;
+uint8_t payload = 1;
+uint16_t checksum;
 
 // ------------------------------------------------------------------------------
 //  Structures
@@ -692,6 +695,8 @@ bool isEtherConnectACK(uint8_t packet[])
 
     bool ok;
     ok = ( mqtt->control == 0x20);
+    if(ok){payload = 4;}
+
     return ok;
 }
 
@@ -730,7 +735,32 @@ bool isEtherSubACK(uint8_t packet[])
 
     bool ok;
     ok = ( mqtt->control == 0x90);
+    if(ok){payload=5;}
+    return ok;
+}
 
+bool isEtherMqttPublish(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+    mqttFrame* mqtt = (mqttFrame*)&tcp->data;
+
+    bool ok;
+    ok = ( mqtt->control == 0x30);
+    return ok;
+}
+
+bool isEtherPushACK(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+
+    bool ok;
+    uint16_t a = (tcp->dataResFlags)&0xFF00;
+    uint16_t b = htons(0x18);
+    ok = ( a == b);
     return ok;
 }
 
@@ -1143,8 +1173,7 @@ void sendSyn(uint8_t packet[])
 
     ip->protocol = 0x06; //tcp
 
-
-    tcp->sourcePort = htons(6215);
+    tcp->sourcePort = htons((rand() % (49151 - 1024 + 1)) + 1024);
 
     tcp->destPort = htons(1883);
 
@@ -1255,16 +1284,19 @@ void sendAck(uint8_t packet[])
     etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
     ip->headerChecksum = getEtherChecksum();
 
+    tcp->sourcePort = tcp->destPort;
+
     tcp->destPort = htons(1883);
-
-    tcp->sourcePort = htons(6215);
-
 
     uint32_t ackNum = tcp->ackNum;
     uint32_t seqNum = tcp->seqNum;
 
-    tcp->ackNum = seqNum + htons32(1);
+    tcp->ackNum = seqNum;
     tcp->seqNum = ackNum;
+
+    tcp->ackNum = tcp->ackNum + htons32(payload);
+
+    payload = 1;
 
     uint8_t dataOff =  (20+0)/4; // 20 Bytes header + 0 Bytes options
     uint8_t res = 0;
@@ -1350,9 +1382,9 @@ void sendConnectCmd(uint8_t packet[])
 
     ip->protocol = 0x06; //tcp
 
-    tcp->destPort = htons(1883);
+    tcp->destPort = tcp->destPort;
 
-    tcp->sourcePort = htons(6215);
+    tcp->sourcePort = tcp->sourcePort;
 
     uint32_t ackNum = tcp->ackNum;
     uint32_t seqNum = tcp->seqNum;
@@ -1478,15 +1510,15 @@ void publishMqttMessage(uint8_t packet[])
 
     ip->protocol = 0x06; //tcp
 
-    tcp->destPort = htons(1883);
+    tcp->sourcePort = tcp->sourcePort;
 
-    tcp->sourcePort = htons(6215);
+    tcp->destPort = htons(1883);
 
     uint32_t ackNum = tcp->ackNum;
     uint32_t seqNum = tcp->seqNum;
 
-    tcp->ackNum = seqNum + htons32(1);
-    tcp->seqNum = ackNum;
+    tcp->ackNum = ackNum;
+    tcp->seqNum = seqNum;
 
     uint8_t dataOff =  (20+0)/4; // 20 Bytes header + 0 Bytes options
     uint8_t res = 0;
@@ -1596,15 +1628,12 @@ void subscribeRequest(uint8_t packet[])
 
     ip->protocol = 0x06; //tcp
 
-    tcp->destPort = htons(1883);
+    tcp->sourcePort = tcp->sourcePort;
 
-    tcp->sourcePort = htons(6215);
+    tcp->destPort = tcp->destPort;
 
-    uint32_t ackNum = tcp->ackNum;
-    uint32_t seqNum = tcp->seqNum;
-
-    tcp->ackNum = seqNum + htons32(1);
-    tcp->seqNum = ackNum;
+    tcp->ackNum = tcp->ackNum;
+    tcp->seqNum = tcp->seqNum;
 
     uint8_t dataOff =  (20+0)/4; // 20 Bytes header + 0 Bytes options
     uint8_t res = 0;
@@ -1711,9 +1740,9 @@ void disconnectRequest(uint8_t packet[])
 
     ip->protocol = 0x06; //tcp
 
-    tcp->destPort = htons(1883);
+    tcp->sourcePort = tcp->destPort;
 
-    tcp->sourcePort = htons(6215);
+    tcp->destPort = htons(1883);
 
     uint32_t ackNum = tcp->ackNum;
     uint32_t seqNum = tcp->seqNum;
@@ -1761,6 +1790,39 @@ void disconnectRequest(uint8_t packet[])
 
     etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 2);
 
+
+}
+
+extern char str[MAX_CHARS+1];
+
+void getMqttMessage(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+    mqttPublishFrame* mqtt = (mqttPublishFrame*)&tcp->data;
+
+
+    if (tcp->check != checksum)
+    {
+        checksum = tcp->check;
+        uint8_t i = 0;
+
+        for (i=0;i<10;i++)
+            str[i]=0;
+
+        uint8_t j =0;
+
+        for (i=htons(mqtt->topicLength);i<mqtt->msgLength-2;i++)
+        {
+        str[j++] = mqtt->topicNameAndMessage[i];
+        }
+        str[j] = 0;
+        putsUart0(str);
+        putsUart0("\n\r");
+
+        payload = mqtt->msgLength+2;
+    }
 
 }
 

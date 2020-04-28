@@ -286,6 +286,7 @@ int main(void)
               //  putsUart0("\n\rCurrent state: Publish MQTT\n\r");
                 if(isEtherConnectACK(data))
                   {
+                    sendAck(data);
                     publishMqttMessage(data);
                     NextState = disconnectReq;
                   }
@@ -295,6 +296,7 @@ int main(void)
               //  putsUart0("\n\rCurrent state: Subscribe MQTT\n\r");
                 if(isEtherConnectACK(data))
                   {
+                    sendAck(data);
                     subscribeRequest(data);
                     NextState = subAck;
                   //  putsUart0("\n\rCurrent state: subAck\n\r");
@@ -317,8 +319,12 @@ int main(void)
                   {
                     sendAck(data);
                     putsUart0("\r\n Subscription Successful \n\r");
-                    subscribeFlag = 0;
                   }
+                if(isEtherMqttPublish(data))
+                {
+                    getMqttMessage(data);
+                    sendAck(data);
+                }
 
                 break;
             case FinWait1:
