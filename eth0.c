@@ -1826,3 +1826,128 @@ void getMqttMessage(uint8_t packet[])
 
 }
 
+bool isEtherMqttPingResponse(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+    mqttFrame* mqtt = (mqttFrame*)&tcp->data;
+
+    bool ok;
+    ok = ( mqtt->control == 0xd0);
+    if(ok){payload=2;}
+    return ok;
+}
+
+void sendPingRequest(uint8_t packet[])
+{
+    etherFrame* ether = (etherFrame*)packet;
+    ipFrame* ip = (ipFrame*)&ether->data;
+    tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
+    mqttPublishFrame* mqtt = (mqttPublishFrame*)&tcp->data;
+
+    // MAC address of the red board
+    ether->sourceAddress[0] = 0x02;
+    ether->sourceAddress[1] = 0x03;
+    ether->sourceAddress[2] = 0x04;
+    ether->sourceAddress[3] = 0x05;
+    ether->sourceAddress[4] = 0x06;
+    ether->sourceAddress[5] = 0x07;
+
+    // MAC address of the Linux PC
+    ether->destAddress[0] = 0x1c;
+    ether->destAddress[1] = 0x69;
+    ether->destAddress[2] = 0x7a;
+    ether->destAddress[3] = 0x07;
+    ether->destAddress[4] = 0x94;
+    ether->destAddress[5] = 0xe3;
+
+    // Frame Type is IP
+    ether->frameType = htons(0x0800);
+
+    //Version
+
+    ip->revSize = 0x45;
+
+    // Services Field
+    ip->typeOfService = 0x00;
+
+    // IP address of the source
+    ip->sourceIp[0] = 192;
+    ip->sourceIp[1] = 168;
+    ip->sourceIp[2] = 10;
+    ip->sourceIp[3] = 138;
+
+    // IP address of the destination
+    ip->destIp[0] = 192;
+    ip->destIp[1] = 168;
+    ip->destIp[2] = 10;
+    ip->destIp[3] = 2;
+
+    ip->id = 0x0000;
+
+    ip->flagsAndOffset = htons(0x4000);
+
+    ip->ttl = 0x80; // or 128 in decimal
+
+    ip->protocol = 0x06; //tcp
+
+    tcp->sourcePort = tcp->sourcePort;
+
+    tcp->destPort = tcp->destPort;
+
+    uint32_t ackNum = tcp->ackNum;
+
+    uint32_t seqNum = tcp->seqNum;
+
+    tcp->ackNum = tcp->ackNum;
+
+    tcp->seqNum = tcp->seqNum;
+
+    uint8_t dataOff =  (20+0)/4; // 20 Bytes header + 0 Bytes options
+
+    uint8_t res = 0;
+
+    uint16_t flags = 0x0018; // PSH ACK
+
+    tcp->dataResFlags = htons( dataOff<<12 | (res>>5)<<9 | flags );
+
+    tcp->winSize = htons(1280);
+
+    tcp->urgPointer = 0;
+
+    tcp->data=0;
+
+    tcp->check=0;
+
+    mqtt->control = 0xc0;
+    mqtt->msgLength = 0;
+
+    // Total length
+    ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 2); // 20 IP header + 0 TCP options + 19 MQTT
+
+    // 32-bit sum over ip header
+     sum = 0;
+     etherSumWords(&ip->revSize, 10);
+     etherSumWords(ip->sourceIp, ((ip->revSize & 0xF) * 4) - 12);
+     ip->headerChecksum = getEtherChecksum();
+
+    // calculate TCP Checksum
+
+    uint16_t tcpLength = htons(20+2);
+
+    // 32-bit sum over pseudo-header
+   sum = 0;
+
+    etherSumWords(ip->sourceIp, 8);
+    uint16_t tmp16 = ip->protocol;
+    sum += (tmp16 & 0xff) << 8;
+    etherSumWords(&tcpLength, 2);
+    etherSumWords(tcp, 20+2);
+
+    tcp->check = getEtherChecksum();
+
+    etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 2);
+
+}
+

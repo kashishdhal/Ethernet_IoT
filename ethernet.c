@@ -56,7 +56,7 @@
 // ------------------------------------------------------------------------------
 uint8_t publishFlag = 0;
 uint8_t subscribeFlag = 0;
-
+uint32_t timerCounter = 0;
 
 //-----------------------------------------------------------------------------
 // Subroutines                
@@ -77,6 +77,16 @@ void initHw()
     selectPinPushPullOutput(GREEN_LED);
     selectPinPushPullOutput(BLUE_LED);
     selectPinDigitalInput(PUSH_BUTTON);
+
+    // Configure Timer 1 as a counter
+    SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R1; // Enable clocks
+    TIMER1_CTL_R &= ~TIMER_CTL_TAEN;                 // turn-off timer before reconfiguring
+    TIMER1_CFG_R = TIMER_CFG_32_BIT_TIMER;           // configure as 32-bit timer (A+B)
+    TIMER1_TAMR_R =  TIMER_TAMR_TACDIR; //  count up // TIMER_TAMR_TAMR_CAP |
+    TIMER1_IMR_R = 0;                                 // turn-off interrupts
+    TIMER1_TAV_R = 0;                               // zero counter for first period
+    TIMER1_CTL_R |= TIMER_CTL_TAEN;                  // turn-on counter
+    NVIC_EN0_R &= ~(1 << (INT_TIMER1A-16));           // turn-off interrupt 37 (TIMER1A)
 }
 
 void displayConnectionInfo()
@@ -319,10 +329,30 @@ int main(void)
                   {
                     sendAck(data);
                     putsUart0("\r\n Subscription Successful \n\r");
+                    TIMER1_TAV_R=0; // reset the timer
+                    timerCounter = 0;
                   }
+
                 if(isEtherMqttPublish(data))
                 {
                     getMqttMessage(data);
+                    sendAck(data);
+                }
+
+                if(TIMER1_TAV_R>40e6)
+                {
+                    timerCounter++;
+                    TIMER1_TAV_R=0;
+                }
+
+                if(timerCounter>50)
+                {
+                    sendPingRequest(data);
+                    timerCounter = 0;
+                }
+
+                if(isEtherMqttPingResponse(data))
+                {
                     sendAck(data);
                 }
 
