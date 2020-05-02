@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 #include "tm4c123gh6pm.h"
 #include "wait.h"
 #include "gpio.h"
@@ -24,7 +25,7 @@ uint8_t argCount=0;
 extern uint8_t publishFlag;
 extern uint8_t subscribeFlag;
 extern TCPState NextState;
-
+uint8_t clientId[4];
 
 void posArg()
 {
@@ -116,6 +117,29 @@ void getString()
             else goto Loop1;
 }
 
+void getIpFromStr()
+{
+    char tempStr[5]; uint8_t i; uint8_t j=0; uint8_t k=0;
+    for(i=0;i<strlen(str2)+1;i++)
+    {
+        if(str2[i]==0)
+        {
+            clientId[j] = atoi(tempStr);
+            break;
+        }
+
+        if(str2[i]!='.')
+            tempStr[k++] = str2[i];
+        else
+        {
+            clientId[j++] = atoi(tempStr);
+            for(k=0;k<5;k++)
+            {tempStr[k]=0;}
+            k = 0;
+        }
+    }
+}
+
 void isCommand()
 {
     if(strcmp(str1,"pub")==0)
@@ -125,16 +149,42 @@ void isCommand()
             putsUart0("\n\r");
     }
 
-    if(strcmp(str1,"sub")==0)
+    else if(strcmp(str1,"sub")==0)
     {
             subscribeFlag=1;
             NextState = closed;
             putsUart0("\n\r");
     }
+
+    else if(strcmp(str1,"ifconfig")==0)
+        {
+            displayConnectionInfo();
+        }
+
+    else if(strcmp(str1,"setip")==0)
+        {
+            getIpFromStr();
+            etherSetIpAddress(clientId[0],clientId[1],clientId[2], clientId[3]);
+            writeEeprom(1, clientId[0]);
+            writeEeprom(2, clientId[1]);
+            writeEeprom(3, clientId[2]);
+            writeEeprom(4, clientId[3]);
+            putsUart0("\n\r");
+        }
+
+
     else if(strcmp("reboot", str1)==0 )
     {
         putsUart0("\r\nRebooting.......................");
         NVIC_APINT_R = NVIC_APINT_VECTKEY| NVIC_APINT_SYSRESETREQ;
     }
 
+}
+
+void shell()
+{
+    getString();
+    // To process the string, calculate the positions of arguments
+    posArg(); parseString();
+    isCommand();
 }

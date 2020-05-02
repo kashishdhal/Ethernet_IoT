@@ -114,6 +114,10 @@ void disconnectRequest(uint8_t packet[]);
 void subscribeRequest(uint8_t packet[]);
 void getMqttMessage(uint8_t packet[]);
 void sendPingRequest(uint8_t packet[]);
+void initEeprom();
+void writeEeprom(uint16_t add, uint32_t eedata);
+uint32_t readEeprom(uint16_t add);
+void displayConnectionInfo();
 
 uint16_t htons(uint16_t value);
 #define ntohs htons

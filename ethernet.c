@@ -92,6 +92,7 @@ void initHw()
 void displayConnectionInfo()
 {
     uint8_t i;
+    uint8_t mqttIp[4] = {192,168,10,2};
     char str[10];
     uint8_t mac[6];
     uint8_t ip[4];
@@ -99,7 +100,7 @@ void displayConnectionInfo()
    putcUart0('\n');
     etherGetMacAddress(mac);
 
-    putsUart0("HW: ");
+    putsUart0("HW MAC: ");
     for (i = 0; i < 6; i++)
     {
         sprintf(str, "%02x", mac[i]);
@@ -110,7 +111,7 @@ void displayConnectionInfo()
     putcUart0('\r');
      putcUart0('\n');
     etherGetIpAddress(ip);
-    putsUart0("IP: ");
+    putsUart0("Client IP: ");
     for (i = 0; i < 4; i++)
     {
         sprintf(str, "%u", ip[i]);
@@ -123,6 +124,16 @@ void displayConnectionInfo()
     else
         putsUart0(" (static)");
     putcUart0('\r');
+    putcUart0('\n');
+    putsUart0("MQTT IP: ");
+    for (i = 0; i < 4; i++)
+    {
+        sprintf(str, "%u", mqttIp[i]);
+        putsUart0(str);
+        if (i < 4-1)
+            putcUart0('.');
+    }
+     putcUart0('\r');
      putcUart0('\n');
     etherGetIpSubnetMask(ip);
     putsUart0("SN: ");
@@ -167,7 +178,6 @@ TCPState NextState = closed;
 
 int main(void)
 {
-    uint8_t* udpData;
     uint8_t data[MAX_PACKET_SIZE];
 
     // Init controller
@@ -177,9 +187,11 @@ int main(void)
     initUart0();
     setUart0BaudRate(115200, 40e6);
 
+    initEeprom();
+
     // Init ethernet interface (eth0)
-    putsUart0("\n\rStarting eth0\n\r");
-    etherSetIpAddress(192, 168, 10, 138);
+    putsUart0("\n\rStarting eth0\n\r"); //192, 168, 10, 138
+    etherSetIpAddress(readEeprom(1),readEeprom(2),readEeprom(3),readEeprom(4));
     etherSetMacAddress(2, 3, 4, 5, 6, 7);
 
     // Unicast is needed to respond to others MAC
@@ -214,8 +226,6 @@ int main(void)
 //    putcUart0(0x0a); putcUart0(0x0d); putsUart0(">>");
 //
 
-   // sendSyn(data);
-
 
     // Main Loop
     // RTOS and interrupts would greatly improve this code,
@@ -223,13 +233,10 @@ int main(void)
     while (true)
     {
 
-        // Put terminal processing here
+       // Put terminal processing here
         if (kbhitUart0())
         {
-              getString();
-              // To process the string, calculate the positions of arguments
-              posArg(); parseString();
-              isCommand();
+            shell();
         }
 
         // Packet processing
@@ -345,7 +352,7 @@ int main(void)
                     TIMER1_TAV_R=0;
                 }
 
-                if(timerCounter>50)
+                if(timerCounter>40)
                 {
                     sendPingRequest(data);
                     timerCounter = 0;

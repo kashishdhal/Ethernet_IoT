@@ -1802,11 +1802,19 @@ void getMqttMessage(uint8_t packet[])
     tcpFrame* tcp = (tcpFrame*)((uint8_t*)ip + ((ip->revSize & 0xF) * 4));
     mqttPublishFrame* mqtt = (mqttPublishFrame*)&tcp->data;
 
+    uint8_t i; char* topicname;
 
-    if (tcp->check != checksum)
+    for(i=0;i<htons(mqtt->topicLength);i++)
+    {
+        topicname[i] = mqtt->topicNameAndMessage[i];
+    }
+
+    topicname[i+1] = 0;
+
+    if (tcp->check != checksum ) //& strcmp(topicname,str2)
     {
         checksum = tcp->check;
-        uint8_t i = 0;
+        i = 0;
 
         for (i=0;i<10;i++)
             str[i]=0;
@@ -1949,5 +1957,26 @@ void sendPingRequest(uint8_t packet[])
 
     etherPutPacket((uint8_t*)ether, 14 + ((ip->revSize & 0xF) * 4) +  20 + 2);
 
+}
+
+void initEeprom()
+{
+    SYSCTL_RCGCEEPROM_R = 1;
+    while (EEPROM_EEDONE_R & EEPROM_EEDONE_WORKING);
+}
+
+void writeEeprom(uint16_t add, uint32_t eedata)
+{
+    EEPROM_EEBLOCK_R = add >> 4;
+    EEPROM_EEOFFSET_R = add & 0xF;
+    EEPROM_EERDWR_R = eedata;
+    while (EEPROM_EEDONE_R & EEPROM_EEDONE_WORKING);
+}
+
+uint32_t readEeprom(uint16_t add)
+{
+    EEPROM_EEBLOCK_R = add >> 4;
+    EEPROM_EEOFFSET_R = add & 0xF;
+    return EEPROM_EERDWR_R;
 }
 

@@ -17,6 +17,8 @@ void isCommand();
 void parseString();
 void posArg();
 void getString();
+void shell();
+void getIpFromStr();
 
 
 #endif
