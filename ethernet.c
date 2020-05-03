@@ -398,6 +398,7 @@ int main(void)
                 putsUart0("\r\n Publish Success \n\r");
                 NextState = closed;
                 publishFlag = 0;
+                subscribeFlag = 0;
                 break;
             }
             }
