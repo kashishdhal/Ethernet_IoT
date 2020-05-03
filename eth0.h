@@ -51,6 +51,8 @@ typedef enum
     subscribeMQTT,
     disconnectReq,
     subAck,
+    sendUnsubReq,
+    unSubAck,
     FinWait1,
     FinWait2,
     TimeWait,
@@ -105,6 +107,7 @@ bool isEtherSubACK(uint8_t packet[]);
 bool isEtherPushACK(uint8_t packet[]);
 bool isEtherMqttPublish(uint8_t packet[]);
 bool isEtherMqttPingResponse(uint8_t packet[]);
+bool isEtherUnSubACK(uint8_t packet[]);
 
 void sendSyn(uint8_t packet[]);
 void sendAck(uint8_t packet[]);
@@ -118,6 +121,7 @@ void initEeprom();
 void writeEeprom(uint16_t add, uint32_t eedata);
 uint32_t readEeprom(uint16_t add);
 void displayConnectionInfo();
+void UnSubscribeRequest(uint8_t packet[]);
 
 uint16_t htons(uint16_t value);
 #define ntohs htons

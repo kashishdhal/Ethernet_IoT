@@ -172,6 +172,11 @@ void isCommand()
             putsUart0("\n\r");
         }
 
+    else if(strcmp(str1,"unsub")==0)
+        {
+            NextState = sendUnsubReq;
+            putsUart0("\n\r");
+        }
 
     else if(strcmp("reboot", str1)==0 )
     {

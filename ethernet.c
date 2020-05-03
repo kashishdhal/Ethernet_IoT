@@ -365,6 +365,22 @@ int main(void)
                 }
 
                 break;
+
+
+            case sendUnsubReq:
+                UnSubscribeRequest(data);
+                NextState = unSubAck;
+                break;
+
+            case unSubAck:
+                if(isEtherUnSubACK(data))
+                  {
+                    sendAck(data);
+                    putsUart0("\r\n Unsubscribed Sucessfully \n\r");
+                    NextState = TimeWait;
+                  }
+                break;
+
             case FinWait1:
                 if(isEtherFINACK(data))
                   {
