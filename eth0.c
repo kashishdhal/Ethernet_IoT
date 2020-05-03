@@ -1151,13 +1151,11 @@ void sendSyn(uint8_t packet[])
     // Services Field
     ip->typeOfService = 0x00;
 
-
-
     // IP address of the source
-    ip->sourceIp[0] = 192;
-    ip->sourceIp[1] = 168;
-    ip->sourceIp[2] = 10;
-    ip->sourceIp[3] = 138;
+    ip->sourceIp[0] = ipAddress[0];
+    ip->sourceIp[1] = ipAddress[1];
+    ip->sourceIp[2] = ipAddress[2];
+    ip->sourceIp[3] = ipAddress[3];
 
     // IP address of the destination
     ip->destIp[0] = 192;
@@ -1259,10 +1257,10 @@ void sendAck(uint8_t packet[])
     ip->length = htons(((ip->revSize & 0xF) * 4) + 20 + 0); // 20 bytes header and 0 bytes options
 
     // IP address of the source
-    ip->sourceIp[0] = 192;
-    ip->sourceIp[1] = 168;
-    ip->sourceIp[2] = 10;
-    ip->sourceIp[3] = 138;
+    ip->sourceIp[0] = ipAddress[0];
+    ip->sourceIp[1] = ipAddress[1];
+    ip->sourceIp[2] = ipAddress[2];
+    ip->sourceIp[3] = ipAddress[3];
 
     // IP address of the destination
     ip->destIp[0] = 192;
@@ -1363,10 +1361,10 @@ void sendConnectCmd(uint8_t packet[])
     ip->typeOfService = 0x00;
 
     // IP address of the source
-    ip->sourceIp[0] = 192;
-    ip->sourceIp[1] = 168;
-    ip->sourceIp[2] = 10;
-    ip->sourceIp[3] = 138;
+    ip->sourceIp[0] = ipAddress[0];
+    ip->sourceIp[1] = ipAddress[1];
+    ip->sourceIp[2] = ipAddress[2];
+    ip->sourceIp[3] = ipAddress[3];
 
     // IP address of the destination
     ip->destIp[0] = 192;
@@ -1491,10 +1489,10 @@ void publishMqttMessage(uint8_t packet[])
     ip->typeOfService = 0x00;
 
     // IP address of the source
-    ip->sourceIp[0] = 192;
-    ip->sourceIp[1] = 168;
-    ip->sourceIp[2] = 10;
-    ip->sourceIp[3] = 138;
+    ip->sourceIp[0] = ipAddress[0];
+    ip->sourceIp[1] = ipAddress[1];
+    ip->sourceIp[2] = ipAddress[2];
+    ip->sourceIp[3] = ipAddress[3];
 
     // IP address of the destination
     ip->destIp[0] = 192;
@@ -1609,10 +1607,10 @@ void subscribeRequest(uint8_t packet[])
     ip->typeOfService = 0x00;
 
     // IP address of the source
-    ip->sourceIp[0] = 192;
-    ip->sourceIp[1] = 168;
-    ip->sourceIp[2] = 10;
-    ip->sourceIp[3] = 138;
+    ip->sourceIp[0] = ipAddress[0];
+    ip->sourceIp[1] = ipAddress[1];
+    ip->sourceIp[2] = ipAddress[2];
+    ip->sourceIp[3] = ipAddress[3];
 
     // IP address of the destination
     ip->destIp[0] = 192;
@@ -1721,10 +1719,10 @@ void disconnectRequest(uint8_t packet[])
     ip->typeOfService = 0x00;
 
     // IP address of the source
-    ip->sourceIp[0] = 192;
-    ip->sourceIp[1] = 168;
-    ip->sourceIp[2] = 10;
-    ip->sourceIp[3] = 138;
+    ip->sourceIp[0] = ipAddress[0];
+    ip->sourceIp[1] = ipAddress[1];
+    ip->sourceIp[2] = ipAddress[2];
+    ip->sourceIp[3] = ipAddress[3];
 
     // IP address of the destination
     ip->destIp[0] = 192;
@@ -1881,10 +1879,10 @@ void sendPingRequest(uint8_t packet[])
     ip->typeOfService = 0x00;
 
     // IP address of the source
-    ip->sourceIp[0] = 192;
-    ip->sourceIp[1] = 168;
-    ip->sourceIp[2] = 10;
-    ip->sourceIp[3] = 138;
+    ip->sourceIp[0] = ipAddress[0];
+    ip->sourceIp[1] = ipAddress[1];
+    ip->sourceIp[2] = ipAddress[2];
+    ip->sourceIp[3] = ipAddress[3];
 
     // IP address of the destination
     ip->destIp[0] = 192;

@@ -133,6 +133,7 @@ void displayConnectionInfo()
         if (i < 4-1)
             putcUart0('.');
     }
+    putsUart0(" (fixed)");
      putcUart0('\r');
      putcUart0('\n');
     etherGetIpSubnetMask(ip);
