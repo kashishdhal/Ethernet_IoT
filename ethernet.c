@@ -57,6 +57,7 @@
 uint8_t publishFlag = 0;
 uint8_t subscribeFlag = 0;
 uint32_t timerCounter = 0;
+uint8_t connectFlag = 0;
 
 //-----------------------------------------------------------------------------
 // Subroutines                
@@ -273,7 +274,7 @@ int main(void)
                 }
             }
 
-        if(publishFlag | subscribeFlag)
+        if(publishFlag | subscribeFlag | connectFlag)
         {
         switch(NextState)
         {
@@ -298,10 +299,19 @@ int main(void)
                 sendConnectCmd(data);
                 if(publishFlag){NextState = publishMQTT;}
                 if(subscribeFlag){NextState = subscribeMQTT;}
+                if(connectFlag){NextState = sendAckState;}
+                break;
+
+
+            case sendAckState:
+                if(isEtherConnectACK(data))
+                  {
+                    sendAck(data);
+                    if(connectFlag){NextState = closed;connectFlag = 0;}
+                  }
                 break;
 
             case publishMQTT:
-              //  putsUart0("\n\rCurrent state: Publish MQTT\n\r");
                 if(isEtherConnectACK(data))
                   {
                     sendAck(data);
@@ -395,7 +405,7 @@ int main(void)
 
             case TimeWait:
                 waitMicrosecond(100000);
-                putsUart0("\r\n Publish Success \n\r");
+                if(publishFlag){putsUart0("\r\n Publish Success \n\r");}
                 NextState = closed;
                 publishFlag = 0;
                 subscribeFlag = 0;

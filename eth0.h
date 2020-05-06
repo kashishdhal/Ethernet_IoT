@@ -47,6 +47,7 @@ typedef enum
     SynSent,
     SynAckRcvd,
     Established,
+    sendAckState,
     publishMQTT,
     subscribeMQTT,
     disconnectReq,

@@ -26,6 +26,7 @@ extern uint8_t publishFlag;
 extern uint8_t subscribeFlag;
 extern TCPState NextState;
 uint8_t clientId[4];
+extern uint8_t connectFlag;
 
 void posArg()
 {
@@ -158,6 +159,7 @@ void isCommand()
 
     else if(strcmp(str1,"ifconfig")==0)
         {
+            putsUart0("\n\r");
             displayConnectionInfo();
         }
 
@@ -172,6 +174,12 @@ void isCommand()
             putsUart0("\n\r");
         }
 
+    else if(strcmp(str1,"connect")==0)
+       {
+            connectFlag = 1;
+           NextState = closed;
+           putsUart0("\n\r");
+       }
     else if(strcmp(str1,"unsub")==0)
         {
             NextState = sendUnsubReq;

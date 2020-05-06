@@ -1923,7 +1923,7 @@ void sendPingRequest(uint8_t packet[])
 
     ip->protocol = 0x06; //tcp
 
-    tcp->sourcePort = portNum;
+    tcp->sourcePort = htons(portNum);
 
     tcp->destPort = tcp->destPort;
 
