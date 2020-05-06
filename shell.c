@@ -174,7 +174,7 @@ void isCommand()
             putsUart0("\n\r");
         }
 
-    else if(strcmp(str1,"connect")==0)
+    else if(strcmp(str1,"conn")==0)
        {
             connectFlag = 1;
            NextState = closed;
